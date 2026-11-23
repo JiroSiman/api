@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FileShare &bull; Send files with a code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --bg:#0b0f19; --panel:#131b2b; --accent:#6366f1; --accent2:#a855f7; --text:#f8fafc; --muted:#94a3b8; --border:#1e293b; --ok:#22c55e; }
+  html { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,-apple-system,sans-serif; }
+  body { min-height:100vh; display:flex; flex-direction:column; }
+  header { padding:24px 32px; border-bottom:1px solid var(--border); background:rgba(11,15,25,0.6); backdrop-filter:blur(6px); position:sticky; top:0; z-index:10; }
+  .brand { display:flex; align-items:center; gap:12px; font-weight:800; font-size:1.25rem; letter-spacing:-0.5px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 14px var(--accent); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+  main { flex:1; padding:40px 32px; max-width:760px; margin:0 auto; width:100%; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:20px; padding:32px; box-shadow:0 20px 40px -10px rgba(0,0,0,.35); }
+  h1 { font-size:1.75rem; font-weight:800; letter-spacing:-0.5px; margin-bottom:8px; }
+  .sub { color:var(--muted); font-size:.95rem; margin-bottom:24px; }
+  .dropzone { border:2px dashed var(--border); border-radius:16px; padding:40px 24px; text-align:center; margin-bottom:24px; background:rgba(255,255,255,.02); cursor:pointer; transition:all .2s; position:relative; }
+  .dropzone.drag { border-color:var(--accent); background:rgba(99,102,241,.08); }
+  .dropzone input { display:none; }
+  .dz-icon { font-size:2.2rem; margin-bottom:12px; display:inline-block; }
+  .dz-title { font-weight:700; margin-bottom:6px; }
+  .dz-hint { color:var(--muted); font-size:.9rem; }
+  .row { display:grid; grid-template-columns:1fr auto; gap:12px; margin-bottom:16px; align-items:end; }
+  input[type="text"] { background:#0b1220; border:1px solid var(--border); color:var(--text); border-radius:10px; padding:12px 16px; font-size:.95rem; }
+  button { border:none; border-radius:10px; padding:12px 20px; font-weight:700; font-size:.95rem; cursor:pointer; transition:transform .1s,filter .2s; font-family:inherit; }
+  button:active { transform:scale(.98); }
+  .btn-primary { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; }
+  .btn-primary:disabled { opacity:.6; cursor:not-allowed; }
+  .btn-copy { background:var(--border); color:var(--text); width:40px; height:40px; border-radius:10px; display:grid; place-items:center; margin-left:8px; }
+  .result { display:none; margin-top:20px; }
+  .code-box { display:flex; gap:10px; align-items:center; margin-bottom:14px; }
+  .code { flex:1; background:#0b1220; border:1px solid var(--accent); color:#fff; border-radius:10px; padding:14px 16px; font-size:1.5rem; font-weight:800; letter-spacing:2px; text-align:center; font-variant-numeric:tabular-nums; }
+  .meta { color:var(--muted); font-size:.85rem; margin-bottom:16px; }
+  .note { color:var(--muted); font-size:.85rem; border-top:1px solid var(--border); padding-top:16px; margin-top:20px; }
+  .hidden { display:none !important; }
+  .loader { border:3px solid rgba(255,255,255,.1); border-top-color:var(--accent); border-radius:50%; width:24px; height:24px; animation:spin .8s linear infinite; display:inline-block; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .err { color:#f87171; font-size:.9rem; margin-top:8px; min-height:1.2rem; }
+  footer { border-top:1px solid var(--border); color:var(--muted); font-size:.85rem; padding:24px 32px; text-align:center; }
+  a { color:var(--accent); text-decoration:none; }
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="dot"></div> FileShare</div></header>
+<main>
+  <section class="panel">
+    <h1>Send anything</h1>
+    <p class="sub">Upload files, folders, photos or videos. They are zipped and stored on your server. Share the code&mdash;the receiver types it to download. No signup. No 25 MB limit.</p>
+
+    <div class="dropzone" id="dropzone">
+      <div class="dz-icon">&#8644;</div>
+      <div class="dz-title">Drag &amp; drop files or folders here</div>
+      <div class="dz-hint">or click to browse &bull; supports multiple files &amp; folders</div>
+      <input type="file" id="fileInput" multiple webkitdirectory directory />
+    </div>
+
+    <div class="row">
+      <input type="text" id="customCode" placeholder="Custom code (optional)" />
+      <button class="btn-primary" id="btnUpload">Create share</button>
+    </div>
+    <div class="err" id="err"></div>
+
+    <div class="result" id="result">
+      <div class="meta">Your share code</div>
+      <div class="code-box">
+        <div class="code" id="code">----</div>
+        <button class="btn-copy" id="btnCopy" title="Copy code">&#128203;</button>
+      </div>
+      <div class="meta">Share this link (receiver opens it to download):</div>
+      <div class="code-box" style="flex-direction:column; align-items:flex-start;">
+        <input type="text" id="linkField" readonly style="width:100%; max-width:100%;" />
+        <button class="btn-copy" id="btnCopyLink" title="Copy link">Copy link</button>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>FileShare &bull; Self-hosted Node.js &bull; Unlimited by your disk &bull; Files expire in 7 days</footer>
+<script src="app.js"></script>
+</body>
+</html>
